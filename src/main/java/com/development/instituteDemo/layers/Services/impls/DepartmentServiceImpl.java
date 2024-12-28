@@ -17,6 +17,10 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     public Department saveDepartment(Department department) {
+//
+//        if (department.getInstitute().getId() == null) {
+//            throw new IllegalArgumentException("No such institute with id:" + department.getInstitute().getId() + " exists!" );
+//        }
         return departmentRepository.save(department);
     }
 }

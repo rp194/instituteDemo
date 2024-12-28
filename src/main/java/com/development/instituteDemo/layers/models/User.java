@@ -15,7 +15,7 @@ public class User {
     @Id
     private String username;
     private String password;
-    @OneToOne
+    @OneToOne(cascade = CascadeType.MERGE, fetch = FetchType.LAZY)
     @JoinColumn(name = "person_id")
     private Person person;
 }

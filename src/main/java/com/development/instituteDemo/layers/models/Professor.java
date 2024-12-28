@@ -16,7 +16,7 @@ public class Professor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Double salary;
-    @OneToOne
+    @OneToOne(cascade = CascadeType.MERGE, fetch = FetchType.LAZY)
     @JoinColumn(name = "person_id")
     private Person person;
 }
