@@ -12,7 +12,7 @@
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/rp194/instituteDemo.git
-   cd StudentManager
+   cd instituteDemo
    ```
 2. Create a database in PostgreSQL using the configurations provided in the `docker-compose.yml` file
 3. Run this command in your terminal to set up the database
