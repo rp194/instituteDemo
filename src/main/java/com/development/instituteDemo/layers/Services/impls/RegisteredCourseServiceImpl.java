@@ -9,55 +9,60 @@ import com.development.instituteDemo.layers.repositories.repositories.CourseRepo
 import com.development.instituteDemo.layers.repositories.repositories.ProfessorRepository;
 import com.development.instituteDemo.layers.repositories.repositories.RegisteredCourseRepository;
 import com.development.instituteDemo.layers.repositories.repositories.StudentRepository;
+import com.development.instituteDemo.layers.validators.Validator;
+import com.development.instituteDemo.layers.validators.impls.CourseValidator;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class RegisteredCourseServiceImpl implements RegisteredCourseService {
     private RegisteredCourseRepository registeredCourseRepository;
-    private StudentRepository studentRepository;
     private CourseRepository courseRepository;
     private ProfessorRepository professorRepository;
+    private Validator<RegisteredCourse> registeredCourseValidator;
+    private Validator<Course> courseValidator;
+    private Validator<Professor> professorValidator;
+
 
     public RegisteredCourseServiceImpl(RegisteredCourseRepository registeredCourseRepository,
-                                       StudentRepository studentRepository,
                                        CourseRepository courseRepository,
-                                       ProfessorRepository professorRepository) {
+                                       ProfessorRepository professorRepository,
+                                       Validator<RegisteredCourse> registeredCourseValidator,
+                                       Validator<Course> courseValidator,
+                                       Validator<Professor> professorValidator) {
         this.registeredCourseRepository = registeredCourseRepository;
-        this.studentRepository = studentRepository;
         this.courseRepository = courseRepository;
         this.professorRepository = professorRepository;
+        this.registeredCourseValidator = registeredCourseValidator;
+        this.courseValidator = courseValidator;
+        this.professorValidator = professorValidator;
     }
 
     @Override
     public RegisteredCourse requestRegisteredCourse(RegisteredCourse registeredCourse) {
+        registeredCourseValidator.validateFields(registeredCourse);
         Long stdNo = registeredCourse.getStudent().getId();
         Long courseId = registeredCourse.getCourse().getId();
-        Student student = studentRepository.findById(stdNo)
-                .orElseThrow(() -> new RuntimeException("Student not found"));
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new RuntimeException("Course not found"));
-        if (course.getCapacity() == null || course.getCapacity() <= 0) {
-            throw new RuntimeException("Course is full or not initialised");
-        }
-        List<Course> currentCourses = registeredCourseRepository.findCoursesByStudentId(stdNo);
-        Course timeConflictedCourse = anyConflict(currentCourses, course);
-        if (timeConflictedCourse != null) {
-            throw new RuntimeException("Timing conflict with course ID: " + timeConflictedCourse.getId());
-        }
+        Optional<Course> optionalCourse = courseRepository.findById(courseId);
+        Course course = optionalCourse.orElse(null);
+        registeredCourseValidator.additionalAccess("registerRequest", stdNo, courseId);
+        assert course != null;
+        course.setCapacity(course.getCapacity()-1);
+        courseRepository.save(course);
         registeredCourse.setGrade(null);
         return  registeredCourseRepository.save(registeredCourse);
     }
 
     @Override
     public RegisteredCourse SetGrade(Long professorId, RegisteredCourse registeredCourse) {
-        Long stdNo = registeredCourse.getStudent().getId();
+        registeredCourseValidator.validateFields(registeredCourse);
         Long courseId = registeredCourse.getCourse().getId();
+        registeredCourseValidator.additionalAccess("setGrade", professorId, courseId);
+        Long stdNo = registeredCourse.getStudent().getId();
         Double grade = registeredCourse.getGrade();
-        Professor professor = professorRepository.findById(professorId)
-                .orElseThrow(() -> new RuntimeException("Professor not found"));
-        RegisteredCourse foundRegisteredCourse = registeredCourseRepository.findStudentsByProfNo(professorId, courseId, stdNo);
+        RegisteredCourse foundRegisteredCourse = registeredCourseRepository.findRegisteredCourse(courseId, stdNo);
         foundRegisteredCourse.setGrade(grade);
         return  registeredCourseRepository.save(foundRegisteredCourse);
     }
@@ -73,19 +78,4 @@ public class RegisteredCourseServiceImpl implements RegisteredCourseService {
 
     }
 
-
-    private Course anyConflict(List<Course> currentCourses, Course course) {
-        for (Course currentCourse : currentCourses) {
-            boolean dayConflict = currentCourse.getDay_1().equals(course.getDay_1()) ||
-                    currentCourse.getDay_1().equals(course.getDay_2()) ||
-                    currentCourse.getDay_2().equals(course.getDay_1()) ||
-                    currentCourse.getDay_2().equals(course.getDay_2());
-            boolean hourConflict = (course.getStartHour() < currentCourse.getEndHour() &&
-                    currentCourse.getStartHour() < course.getEndHour());
-            if (dayConflict && hourConflict) {
-                return currentCourse;
-            }
-        }
-        return null;
-    }
 }
